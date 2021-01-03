@@ -4,27 +4,26 @@
 #include <future>
 #include <chrono>
 
+#include "Vec2d.hpp"
+#include "Vec2i.hpp"
+
+
 using namespace std;
 
-struct vec2i {
-    int x;
-    int y;
-};
-
-struct vec2d {
-    double x;
-    double y;
-};
-
-const string BALL = "*";
-const string PADDLE = "-----";
+const char *BALL = "*";
+const char *PADDLE = "-----";
+const int W = 80;
+const int H = 24;
 
 bool isPlaying, hasBall;
-
 MEVENT me;
+Vec2i p(40, 23);
+Vec2d b(0, 0), v(0, 0);
+mt19937 mt;
+uniform_real_distribution<double> ud(0.0, 1.0);
 
-vec2i p;
-vec2d b, v;
+
+void init();
 
 void setup();
 void update();
@@ -33,28 +32,25 @@ void loop();
 
 void keyPressed();
 
-auto game = thread([] { loop(); });
+void checkCollision();
+void moveBall();
 
-mt19937 mt;
-uniform_real_distribution<double> ud(0.0, 1.0);
 
 int main(void)
 {
-    initscr();
-
+    init();
     setup();
-    while (true) {
-        update();
-        draw();
+    thread game(loop);
+    while (isPlaying) {
+        keyPressed();
     }
-
-    isPlaying = false;
     game.join();
     endwin();
     exit(1);
 }
 
-void setup() {
+void init() {
+    initscr();
     // NO SHOW INPUT KEY
     noecho();
     // NO SHOW INPUT KEY
@@ -63,24 +59,25 @@ void setup() {
     keypad(stdscr, TRUE);
     // GET MOUSE EVENT (XTERM)
     mousemask(ALL_MOUSE_EVENTS, NULL);
+}
 
-    p = { 40, 23 };
+void setup() {
+    isPlaying = true;
+    hasBall = true;
 }
 
 void update() {
-    keyPressed();
+    moveBall();
+    checkCollision();
 }
 
 void draw() {
     clear();
-
+    if (hasBall) mvprintw(p.y - 1, p.x, BALL);
+    mvprintw(p.y , p.x - 2 , PADDLE);
     int x = static_cast<int>(b.x);
     int y = static_cast<int>(b.y);
-    mvprintw(p.y , p.x - 2 , PADDLE);
-
-    if (hasBall) mvprintw(b.y, b.x, BALL);
-    else mvprintw(y, x, BALL);
-
+    if (!hasBall) mvprintw(y, x, BALL);
     refresh();
 }
 
@@ -88,14 +85,15 @@ void loop() {
     while (isPlaying) {
         update();
         draw();
-        this_thread::sleep_for(chrono::milliseconds(10));
+        this_thread::sleep_for(chrono::milliseconds(50));
     }
 }
 
 void keyPressed() {
-    int ch = getch();
-    if (ch == 'q') break;
-    switch (ch) {
+    switch (getch()) {
+        case 'q':
+            isPlaying = false;
+            break;
         case ' ':
             if(hasBall) {
                 hasBall = false;
@@ -103,15 +101,15 @@ void keyPressed() {
                 b.y = p.y - 1;
                 double theta = (ud(mt) / 2 + 0.25) * M_PI;
                 v.x = cos(theta) / 2;
-                v.y = sin(theta) / 2;
+                v.y = -sin(theta) / 2;
             }
             break;
         case KEY_MOUSE:
             switch (getmouse(&me)) {
                 case OK:
                     p.x = me.x;
-                    if (px < 2) px = 2;
-                    if (px > 2) px = 77;
+                    if (p.x < 2) p.x = 2;
+                    if (p.x > 77) p.x = 77;
                     break;
                 default:
                     break;
@@ -119,5 +117,39 @@ void keyPressed() {
             break;
         default:
             break;
+    }
+}
+
+void checkCollision() {
+    if (b.y < 23 || b.x < (p.x - 2) || (p.x + 3) < b.x) return;
+    b.y = 23;
+    double x = static_cast<double>(p.x);
+    double theta = M_PI * ((x - b.x + 1.5) / 8 + 0.25);
+    v.x = cos(theta) / 2;
+    v.y = -sin(theta) / 2;
+}
+
+void moveBall() {
+    if (hasBall) return;
+    b += v;
+    // bx
+    if (b.x < 0) {
+        b.x = 0;
+        v.x = abs(v.x);
+    }
+    // by
+    if (b.y < 0) {
+        b.y = 0;
+        v.y = abs(v.y);
+    }
+    // bx
+    if (b.x > W) {
+        b.x = W;
+        v.x = -abs(v.x);
+    }
+    // by
+    if (b.y > H) {
+        b.y = H;
+        hasBall = true;
     }
 }
