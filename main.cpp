@@ -7,6 +7,7 @@
 #include "Vec2d.hpp"
 #include "Vec2i.hpp"
 
+#define rep(i,n) for(int (i)=0;(i)<(n);(i)++)
 
 using namespace std;
 
@@ -17,11 +18,15 @@ const int H = 24;
 
 bool isPlaying, hasBall;
 MEVENT me;
+double r;
 Vec2i p(40, 23);
 Vec2d b(0, 0), v(0, 0);
 mt19937 mt;
 uniform_real_distribution<double> ud(0.0, 1.0);
-
+const Vec2i BLOCK_START(10, 2), BLOCK_SIZE(60, 5);
+const int BSTX = 10, BSTY = 2;
+const int BSZX = 60, BSZY = 5;
+bool blocks[BSZY][BSZX];
 
 void init();
 
@@ -34,6 +39,7 @@ void keyPressed();
 
 void checkCollision();
 void moveBall();
+void drawBlock();
 
 
 int main(void)
@@ -41,9 +47,7 @@ int main(void)
     init();
     setup();
     thread game(loop);
-    while (isPlaying) {
-        keyPressed();
-    }
+    while (isPlaying) keyPressed();
     game.join();
     endwin();
     exit(1);
@@ -51,19 +55,17 @@ int main(void)
 
 void init() {
     initscr();
-    // NO SHOW INPUT KEY
-    noecho();
-    // NO SHOW INPUT KEY
-    curs_set(0);
-    // GET MOUSE EVENT (XTERM)
-    keypad(stdscr, TRUE);
-    // GET MOUSE EVENT (XTERM)
-    mousemask(ALL_MOUSE_EVENTS, NULL);
+    noecho(); // NO SHOW INPUT KEY
+    curs_set(0); // NO SHOW INPUT KEY
+    keypad(stdscr, TRUE); // GET MOUSE EVENT (XTERM)
+    mousemask(ALL_MOUSE_EVENTS, NULL); // GET MOUSE EVENT (XTERM)
 }
 
 void setup() {
     isPlaying = true;
     hasBall = true;
+    r = 1.0;
+    rep(i,BSZY) rep(j,BSZX) blocks[i][j] = true;
 }
 
 void update() {
@@ -78,6 +80,7 @@ void draw() {
     int x = static_cast<int>(b.x);
     int y = static_cast<int>(b.y);
     if (!hasBall) mvprintw(y, x, BALL);
+    drawBlock();
     refresh();
 }
 
@@ -104,6 +107,14 @@ void keyPressed() {
                 v.y = -sin(theta) / 2;
             }
             break;
+        case KEY_LEFT:
+            p.x -= 1;
+            if (p.x < 2) p.x = 2;
+            break;
+        case KEY_RIGHT:
+            p.x += 1;
+            if (p.x > 77) p.x = 77;
+            break;
         case KEY_MOUSE:
             switch (getmouse(&me)) {
                 case OK:
@@ -122,34 +133,27 @@ void keyPressed() {
 
 void checkCollision() {
     if (b.y < 23 || b.x < (p.x - 2) || (p.x + 3) < b.x) return;
+    r += 0.1;
     b.y = 23;
     double x = static_cast<double>(p.x);
     double theta = M_PI * ((x - b.x + 1.5) / 8 + 0.25);
-    v.x = cos(theta) / 2;
-    v.y = -sin(theta) / 2;
+    v.x = r * (cos(theta) / 2);
+    v.y = r * (-sin(theta) / 2);
 }
 
 void moveBall() {
     if (hasBall) return;
     b += v;
-    // bx
-    if (b.x < 0) {
-        b.x = 0;
-        v.x = abs(v.x);
-    }
-    // by
-    if (b.y < 0) {
-        b.y = 0;
-        v.y = abs(v.y);
-    }
-    // bx
-    if (b.x > W) {
-        b.x = W;
-        v.x = -abs(v.x);
-    }
-    // by
-    if (b.y > H) {
-        b.y = H;
-        hasBall = true;
+    if (b.x < 0) b.x = 0; v.x = -v.x; // bx
+    if (b.y < 0) b.y = 0; v.y = -v.y; // by
+    if (b.x > W) b.x = W; v.x = -v.x; // bx
+    if (b.y > H) b.y = H; hasBall = true; // by
+}
+
+void drawBlock() {
+    rep(i,BSZY) {
+        rep(j,BSZX) {
+            if(blocks[i][j]) mvprintw(BSTY+i, BSTX+j, "+");
+        }
     }
 }
