@@ -89,11 +89,12 @@ void draw() {
 }
 
 void loop() {
-    int fps = static_cast<int>(1 / 60);
+    int fps = 30;
+    int ms = static_cast<int>(1000 / fps);
     while (isPlaying) {
         update();
         draw();
-        this_thread::sleep_for(chrono::milliseconds(fps));
+        this_thread::sleep_for(chrono::milliseconds(ms));
     }
 }
 
