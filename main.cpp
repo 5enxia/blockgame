@@ -26,19 +26,31 @@ const Vec2i BLOCK_START(10, 2), BLOCK_SIZE(60, 5);
 const int BSTX = 10, BSTY = 2;
 const int BSZX = 60, BSZY = 5;
 bool blocks[BSZY][BSZX];
-
-void init();
+enum {
+    PADDLE_COLOR = 1,
+    BALL_COLOR,
+    BLOCK_COLOR
+};
 
 void setup();
 void update();
 void draw();
 void loop();
 
+void init();
+void end();
+
+void initColorPair();
+
 void keyPressed();
 
 void checkPaddleCollision();
 void checkBlockCollision();
+
 void moveBall();
+
+void drawPaddle();
+void drawBall();
 void drawBlock();
 
 
@@ -49,19 +61,28 @@ int main(void)
     thread game(loop);
     while (isPlaying) keyPressed();
     game.join();
-    endwin();
+    end();
     exit(1);
 }
 
 void init() {
     initscr();
     start_color(); // COLOR MODE ON
-    init_pair(1, COLOR_RED, COLOR_BLACK); // FG & BG COLOR
-    attron(COLOR_PAIR(1));
+    initColorPair();
     noecho(); // NO SHOW INPUT KEY
     curs_set(0); // NO SHOW INPUT KEY
     keypad(stdscr, TRUE); // GET MOUSE EVENT (XTERM)
     mousemask(ALL_MOUSE_EVENTS, NULL); // GET MOUSE EVENT (XTERM)
+}
+
+void initColorPair() {
+    init_pair(PADDLE_COLOR, COLOR_RED, COLOR_BLACK);
+    init_pair(BALL_COLOR, COLOR_GREEN, COLOR_BLACK);
+    init_pair(BLOCK_COLOR, COLOR_YELLOW, COLOR_BLACK);
+}
+
+void end() {
+    endwin();
 }
 
 void setup() {
@@ -82,11 +103,11 @@ void update() {
 
 void draw() {
     clear();
-    if (hasBall) mvprintw(p.y - 1, p.x, BALL);
-    mvprintw(p.y , p.x - 2 , PADDLE);
-    int x = static_cast<int>(b.x);
-    int y = static_cast<int>(b.y);
-    if (!hasBall) mvprintw(y, x, BALL);
+    attron(COLOR_PAIR(PADDLE_COLOR));
+    drawPaddle();
+    attron(COLOR_PAIR(BALL_COLOR));
+    drawBall();
+    attron(COLOR_PAIR(BLOCK_COLOR));
     drawBlock();
     refresh();
 }
@@ -185,6 +206,17 @@ void moveBall() {
         b.y = H;
         hasBall = true;
     }
+}
+
+void drawPaddle() {
+    mvprintw(p.y , p.x - 2 , PADDLE);
+}
+
+void drawBall() {
+    int x = static_cast<int>(b.x);
+    int y = static_cast<int>(b.y);
+    if (hasBall) mvprintw(p.y - 1, p.x, BALL);
+    else mvprintw(y, x, BALL);
 }
 
 void drawBlock() {
