@@ -55,6 +55,9 @@ int main(void)
 
 void init() {
     initscr();
+    start_color(); // COLOR MODE ON
+    init_pair(1, COLOR_RED, COLOR_BLACK); // FG & BG COLOR
+    attron(COLOR_PAIR(1));
     noecho(); // NO SHOW INPUT KEY
     curs_set(0); // NO SHOW INPUT KEY
     keypad(stdscr, TRUE); // GET MOUSE EVENT (XTERM)
