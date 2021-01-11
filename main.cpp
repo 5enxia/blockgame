@@ -15,14 +15,16 @@ const char *BALL = "*";
 const char *PADDLE = "-----";
 const int W = 80;
 const int H = 24;
+const int FPS = 30;
+const int PADDLE_SIZE = 5;
+const int PADDLE_SIZE_HALF = 2;
 
 bool isPlaying, hasBall;
 MEVENT me;
-Vec2i p(40, 23);
+Vec2i p(40, H - 1);
 Vec2d b(0, 0), v(0, 0);
 mt19937 mt;
 uniform_real_distribution<double> ud(0.0, 1.0);
-const Vec2i BLOCK_START(10, 2), BLOCK_SIZE(60, 5);
 const int BSTX = 10, BSTY = 2;
 const int BSZX = 60, BSZY = 5;
 bool blocks[BSZY][BSZX];
@@ -52,6 +54,7 @@ void moveBall();
 void drawPaddle();
 void drawBall();
 void drawBlock();
+void drawWall();
 
 
 int main(void)
@@ -113,8 +116,7 @@ void draw() {
 }
 
 void loop() {
-    int fps = 30;
-    int ms = static_cast<int>(1000 / fps);
+    int ms = static_cast<int>(1000 / FPS);
     while (isPlaying) {
         update();
         draw();
@@ -139,18 +141,18 @@ void keyPressed() {
             break;
         case KEY_LEFT:
             p.x -= 1;
-            if (p.x < 2) p.x = 2;
+            if (p.x < PADDLE_SIZE_HALF) p.x = PADDLE_SIZE_HALF;
             break;
         case KEY_RIGHT:
             p.x += 1;
-            if (p.x > 77) p.x = 77;
+            if (p.x > W - PADDLE_SIZE_HALF - 1) p.x = W - PADDLE_SIZE_HALF - 1;
             break;
         case KEY_MOUSE:
             switch (getmouse(&me)) {
                 case OK:
                     p.x = me.x;
-                    if (p.x < 2) p.x = 2;
-                    if (p.x > 77) p.x = 77;
+                    if (p.x < PADDLE_SIZE_HALF) p.x = PADDLE_SIZE_HALF;
+                    if (p.x > W - PADDLE_SIZE_HALF - 1) p.x = W - PADDLE_SIZE_HALF - 1;
                     break;
                 default:
                     break;
@@ -162,8 +164,8 @@ void keyPressed() {
 }
 
 void checkPaddleCollision() {
-    if (b.y < 23 || b.x < (p.x - 2) || (p.x + 3) < b.x) return;
-    b.y = 23;
+    if (b.y < H - 1 || b.x < (p.x - PADDLE_SIZE_HALF) || (p.x + PADDLE_SIZE_HALF + 1) < b.x) return;
+    b.y = H - 1;
     double x = static_cast<double>(p.x);
     double theta = M_PI * ((x - b.x + 1.5) / 8 + 0.25);
     v.x = cos(theta) / 2;
@@ -209,7 +211,7 @@ void moveBall() {
 }
 
 void drawPaddle() {
-    mvprintw(p.y , p.x - 2 , PADDLE);
+    mvprintw(p.y , p.x - PADDLE_SIZE_HALF , PADDLE);
 }
 
 void drawBall() {
@@ -225,4 +227,8 @@ void drawBlock() {
             if(blocks[i][j]) mvprintw(BSTY+i, BSTX+j, "+");
         }
     }
+}
+
+void drawWall() {
+
 }
