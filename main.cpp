@@ -11,35 +11,51 @@
 
 using namespace std;
 
-const char *BALL = "*";
+const char *BALL = "@";
 const char *PADDLE = "-----";
 const int W = 80;
 const int H = 24;
+const int FPS = 30;
+const int PADDLE_SIZE = 5;
+const int PADDLE_SIZE_HALF = 2;
 
 bool isPlaying, hasBall;
 MEVENT me;
-Vec2i p(40, 23);
+Vec2i p(40, H - 1);
 Vec2d b(0, 0), v(0, 0);
 mt19937 mt;
 uniform_real_distribution<double> ud(0.0, 1.0);
-const Vec2i BLOCK_START(10, 2), BLOCK_SIZE(60, 5);
 const int BSTX = 10, BSTY = 2;
 const int BSZX = 60, BSZY = 5;
 bool blocks[BSZY][BSZX];
-
-void init();
+enum {
+    PADDLE_COLOR = 1,
+    BALL_COLOR,
+    BLOCK_COLOR,
+    WALL_COLOR
+};
 
 void setup();
 void update();
 void draw();
 void loop();
 
+void init();
+void end();
+
+void initColorPair();
+
 void keyPressed();
 
 void checkPaddleCollision();
 void checkBlockCollision();
+
 void moveBall();
+
+void drawPaddle();
+void drawBall();
 void drawBlock();
+void drawWall();
 
 
 int main(void)
@@ -49,16 +65,29 @@ int main(void)
     thread game(loop);
     while (isPlaying) keyPressed();
     game.join();
-    endwin();
+    end();
     exit(1);
 }
 
 void init() {
     initscr();
+    start_color(); // COLOR MODE ON
+    initColorPair();
     noecho(); // NO SHOW INPUT KEY
     curs_set(0); // NO SHOW INPUT KEY
     keypad(stdscr, TRUE); // GET MOUSE EVENT (XTERM)
     mousemask(ALL_MOUSE_EVENTS, NULL); // GET MOUSE EVENT (XTERM)
+}
+
+void initColorPair() {
+    init_pair(PADDLE_COLOR, COLOR_RED, COLOR_BLACK);
+    init_pair(BALL_COLOR, COLOR_GREEN, COLOR_BLACK);
+    init_pair(BLOCK_COLOR, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(WALL_COLOR, COLOR_BLUE, COLOR_BLACK);
+}
+
+void end() {
+    endwin();
 }
 
 void setup() {
@@ -79,18 +108,19 @@ void update() {
 
 void draw() {
     clear();
-    if (hasBall) mvprintw(p.y - 1, p.x, BALL);
-    mvprintw(p.y , p.x - 2 , PADDLE);
-    int x = static_cast<int>(b.x);
-    int y = static_cast<int>(b.y);
-    if (!hasBall) mvprintw(y, x, BALL);
+    attron(COLOR_PAIR(PADDLE_COLOR));
+    drawPaddle();
+    attron(COLOR_PAIR(BALL_COLOR));
+    drawBall();
+    attron(COLOR_PAIR(BLOCK_COLOR));
     drawBlock();
+    attron(COLOR_PAIR(WALL_COLOR));
+    drawWall();
     refresh();
 }
 
 void loop() {
-    int fps = 30;
-    int ms = static_cast<int>(1000 / fps);
+    int ms = static_cast<int>(1000 / FPS);
     while (isPlaying) {
         update();
         draw();
@@ -115,18 +145,18 @@ void keyPressed() {
             break;
         case KEY_LEFT:
             p.x -= 1;
-            if (p.x < 2) p.x = 2;
+            if (p.x < PADDLE_SIZE_HALF + 1) p.x = PADDLE_SIZE_HALF + 1;
             break;
         case KEY_RIGHT:
             p.x += 1;
-            if (p.x > 77) p.x = 77;
+            if (p.x > W - PADDLE_SIZE_HALF - 2) p.x = W - PADDLE_SIZE_HALF - 2;
             break;
         case KEY_MOUSE:
             switch (getmouse(&me)) {
                 case OK:
                     p.x = me.x;
-                    if (p.x < 2) p.x = 2;
-                    if (p.x > 77) p.x = 77;
+                    if (p.x < PADDLE_SIZE_HALF) p.x = PADDLE_SIZE_HALF;
+                    if (p.x > W - PADDLE_SIZE_HALF - 1) p.x = W - PADDLE_SIZE_HALF - 1;
                     break;
                 default:
                     break;
@@ -138,8 +168,8 @@ void keyPressed() {
 }
 
 void checkPaddleCollision() {
-    if (b.y < 23 || b.x < (p.x - 2) || (p.x + 3) < b.x) return;
-    b.y = 23;
+    if (b.y < H - 1 || b.x < (p.x - PADDLE_SIZE_HALF) || (p.x + PADDLE_SIZE_HALF + 1) < b.x) return;
+    b.y = H - 1;
     double x = static_cast<double>(p.x);
     double theta = M_PI * ((x - b.x + 1.5) / 8 + 0.25);
     v.x = cos(theta) / 2;
@@ -163,18 +193,18 @@ void moveBall() {
     if (hasBall) return;
     b += v;
     // bx
-    if (b.x < 0) {
-        b.x = 0;
+    if (b.x < 1) {
+        b.x = 1;
         v.x = -v.x;
     }
     // by
-    if (b.y < 0) {
-        b.y = 0;
+    if (b.y < 1) {
+        b.y = 1;
         v.y = -v.y;
     }
     // bx
-    if (b.x > W) {
-        b.x = W;
+    if (b.x > W - 2) {
+        b.x = W - 2;
         v.x = -v.x;
     }
     // by
@@ -184,10 +214,27 @@ void moveBall() {
     }
 }
 
+void drawPaddle() {
+    mvprintw(p.y , p.x - PADDLE_SIZE_HALF , PADDLE);
+}
+
+void drawBall() {
+    int x = static_cast<int>(b.x);
+    int y = static_cast<int>(b.y);
+    if (hasBall) mvprintw(p.y - 1, p.x, BALL);
+    else mvprintw(y, x, BALL);
+}
+
 void drawBlock() {
     rep(i,BSZY) {
         rep(j,BSZX) {
             if(blocks[i][j]) mvprintw(BSTY+i, BSTX+j, "+");
         }
     }
+}
+
+void drawWall() {
+    rep(i, H) mvprintw(i, 0, "|");
+    rep(i, H) mvprintw(i, W - 1, "|");
+    rep(i, W) mvprintw(0, i, "-");
 }
