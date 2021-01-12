@@ -11,7 +11,7 @@
 
 using namespace std;
 
-const char *BALL = "*";
+const char *BALL = "@";
 const char *PADDLE = "-----";
 const int W = 80;
 const int H = 24;
@@ -31,7 +31,8 @@ bool blocks[BSZY][BSZX];
 enum {
     PADDLE_COLOR = 1,
     BALL_COLOR,
-    BLOCK_COLOR
+    BLOCK_COLOR,
+    WALL_COLOR
 };
 
 void setup();
@@ -82,6 +83,7 @@ void initColorPair() {
     init_pair(PADDLE_COLOR, COLOR_RED, COLOR_BLACK);
     init_pair(BALL_COLOR, COLOR_GREEN, COLOR_BLACK);
     init_pair(BLOCK_COLOR, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(WALL_COLOR, COLOR_BLUE, COLOR_BLACK);
 }
 
 void end() {
@@ -112,6 +114,8 @@ void draw() {
     drawBall();
     attron(COLOR_PAIR(BLOCK_COLOR));
     drawBlock();
+    attron(COLOR_PAIR(WALL_COLOR));
+    drawWall();
     refresh();
 }
 
@@ -141,11 +145,11 @@ void keyPressed() {
             break;
         case KEY_LEFT:
             p.x -= 1;
-            if (p.x < PADDLE_SIZE_HALF) p.x = PADDLE_SIZE_HALF;
+            if (p.x < PADDLE_SIZE_HALF + 1) p.x = PADDLE_SIZE_HALF + 1;
             break;
         case KEY_RIGHT:
             p.x += 1;
-            if (p.x > W - PADDLE_SIZE_HALF - 1) p.x = W - PADDLE_SIZE_HALF - 1;
+            if (p.x > W - PADDLE_SIZE_HALF - 2) p.x = W - PADDLE_SIZE_HALF - 2;
             break;
         case KEY_MOUSE:
             switch (getmouse(&me)) {
@@ -189,18 +193,18 @@ void moveBall() {
     if (hasBall) return;
     b += v;
     // bx
-    if (b.x < 0) {
-        b.x = 0;
+    if (b.x < 1) {
+        b.x = 1;
         v.x = -v.x;
     }
     // by
-    if (b.y < 0) {
-        b.y = 0;
+    if (b.y < 1) {
+        b.y = 1;
         v.y = -v.y;
     }
     // bx
-    if (b.x > W) {
-        b.x = W;
+    if (b.x > W - 2) {
+        b.x = W - 2;
         v.x = -v.x;
     }
     // by
@@ -230,5 +234,7 @@ void drawBlock() {
 }
 
 void drawWall() {
-
+    rep(i, H) mvprintw(i, 0, "|");
+    rep(i, H) mvprintw(i, W - 1, "|");
+    rep(i, W) mvprintw(0, i, "-");
 }
